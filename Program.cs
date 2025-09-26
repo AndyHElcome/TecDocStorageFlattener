@@ -3,11 +3,28 @@ using Microsoft.Extensions.DependencyInjection;
 using System.IO.Compression;
 using System.Text.Json;
 using System.Threading.Tasks;
+using static Tasks;
 
 Console.WriteLine("Hello, World!");
 
 
 
+var task = new SerialiseArticles()
+{
+    Filepath = @"C:\Users\andy.hargreaves\OneDrive - KerridgeCS\Desktop\Xc4TecDocTesting\ver3.1. 20250925",
+    FileNamePattern = $"Client23.*.zip",
+    FileName = $"Articles.json"
+};
+
+try
+{
+   await task.Execute();
+
+}
+catch (Exception ex)
+{
+    Console.WriteLine(ex.ToString());
+}
 
 
 

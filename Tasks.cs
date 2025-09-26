@@ -1,6 +1,9 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.IO.Compression;
 using System.Text.Json;
+using System.Linq;
+using System.Text.Json.Serialization;
 
 
 
@@ -8,11 +11,12 @@ using System.Text.Json;
 
 public class Tasks
 {
+    public static IServiceProvider ServiceProvider;
 
     public abstract class SerialiseTasks
     {
 
-        public abstract void Execute(); 
+        public abstract Task Execute(); 
     }
 
 
@@ -21,7 +25,7 @@ public class Tasks
         public required string SourceFileName { get; init; }
         public string? DestinationFileName { get; set; }
 
-        public override void Execute()
+        public override async Task Execute()
         {
             if (string.IsNullOrEmpty(DestinationFileName))
                 DestinationFileName = Path.ChangeExtension(SourceFileName, "\\");
@@ -36,10 +40,10 @@ public class Tasks
             }
         }
 
-        public Stream? GetZipArchiveStream(string fileName)
+        public ZipArchiveEntry? GetZipArchiveStream(string fileName)
         {
             var zipFileSource = new ZipArchive(File.OpenRead(SourceFileName), ZipArchiveMode.Read);
-            return zipFileSource.GetEntry(fileName).Open();
+            return zipFileSource.GetEntry(fileName);
         }
     }
 
@@ -51,10 +55,21 @@ public class Tasks
         public string FileName { get; set; } = $"Articles.json"; //e.g $"Articles.json"
 
 
-        public override void Execute()
+        public override async Task Execute()
         {
+            //var jsonSerializerOptions = ServiceProvider.GetRequiredService<JsonSerializerOptions>();
+            JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                NumberHandling = JsonNumberHandling.AllowReadingFromString
+            };
+
+            Stream? stream;
+
             var sourceFileName = Directory.GetFiles(Filepath, FileNamePattern ?? "*").OrderDescending(StringComparer.OrdinalIgnoreCase).FirstOrDefault(); //TODO Change to foreach
-            Stream stream;
+
+            if (string.IsNullOrEmpty(sourceFileName))
+                throw new InvalidOperationException("Could not find source file");
 
             string[] extensions = [ ".zip", ".7z" ];
             if (extensions.Contains(Path.GetExtension(sourceFileName)))
@@ -62,7 +77,7 @@ public class Tasks
                 //var unzippedDocuments = new UnzipDocuments { SourceFileName = sourceFileName }.Execute();
                 //sourceFileName = unzippedDocuments.DestinationPath;
 
-                stream = new UnzipDocuments { SourceFileName = sourceFileName }.GetZipArchiveStream(FileName);
+                stream = new UnzipDocuments { SourceFileName = sourceFileName }.GetZipArchiveStream(FileName)?.Open();
             }
             else if  (Path.GetExtension(sourceFileName) == ".json")
                 stream = File.OpenRead(sourceFileName);
@@ -72,6 +87,18 @@ public class Tasks
             if (stream == null)
                 throw new InvalidOperationException("Could not open stream from source file");
 
+            // Mat's magic
+            //var sourceDocuments = JsonSerializer.DeserializeAsyncEnumerable<Xc4.DataTransferObjects.TecDoc.API.Storage.Staging.PutArticlesItem>(stream, jsonSerializerOptions)
+            //    .Where(c => !string.IsNullOrEmpty(c?.Article?.ArtNo))
+            //    .Chunk(50);
+            //await foreach (var chunk in sourceDocuments)
+            //    Console.WriteLine("{@chunk}", chunk);
+
+
+
+            var sourceDocuments = JsonSerializer.DeserializeAsyncEnumerable<Xc4.DataTransferObjects.TecDoc.API.Storage.Staging.PutArticlesItem>(stream, jsonSerializerOptions); // TODO Broken - fix
+            await foreach (var item in sourceDocuments)
+                Console.WriteLine("{@item}", item);
 
 
             stream.Dispose();
