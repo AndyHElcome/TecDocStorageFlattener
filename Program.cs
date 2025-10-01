@@ -1,19 +1,31 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.IO.Compression;
 using System.Text.Json;
 using System.Threading.Tasks;
-using static Tasks;
+using TecDocStorageFlattener.Configuration;
+using TecDocStorageFlattener.Tasks.Deserialize;
+using TecDocStorageFlattener.Tasks.Exporters;
 
-Console.WriteLine("Hello, World!");
+var Log = Logger.Log;
+
+int clientReference = 23;
 
 
 
-var task = new SerialiseArticles()
+
+var task = new DeserializeArticles()
 {
     Filepath = @"C:\Users\andy.hargreaves\OneDrive - KerridgeCS\Desktop\Xc4TecDocTesting\ver3.1. 20250925",
     FileNamePattern = $"Client23.*.zip",
-    FileName = $"Articles.json"
+    FileName = $"Articles.json",
+    Exporter = new ExportSQL()
+    {
+        Logger = Log,
+        ConnectionString = "Server=dev-sql;Database=idp_6402;Integrated Security=False;User Id=sa;Password=elcome_b055;TrustServerCertificate=True",
+        ReferenceDataConnectionString = "Server=dev-sql;Database=TecdocReferenceData;Integrated Security=False;User Id=sa;Password=elcome_b055;TrustServerCertificate=True"
+    }
 };
 
 try
@@ -25,9 +37,6 @@ catch (Exception ex)
 {
     Console.WriteLine(ex.ToString());
 }
-
-
-
 
 
 
