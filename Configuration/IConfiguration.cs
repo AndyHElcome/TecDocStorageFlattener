@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using TecDocStorageFlattener.Models.Contexts.TecdocReference22;
 using TecDocStorageFlattener.Models.Contexts.Supplier;
 using TecDocStorageFlattener.Services;
+using TafLoader.Models.Tecdoc;
 
 namespace TecDocStorageFlattener.Configuration;
 
@@ -50,5 +51,13 @@ public class SupplierDBConfiguration : DBConfiguration<SupplierDataContext>
 public class ReferenceDBConfiguration : DBConfiguration<TecdocReference22DbContext>
 {
     public override TecdocReference22DbContext Context => new TecdocReference22DbContext(GetOptions());
+}
 
+public class TAFSupplierDBConfiguration : DBConfiguration<TecdocDbContext>
+{
+    public override TecdocDbContext Context => new TecdocDbContext(GetOptions());
+}
+public class TAFReferenceDBConfiguration : DBConfiguration<TecdocDbContext>
+{
+    public override TecdocDbContext Context => new TecdocDbContext(GetOptions());
 }

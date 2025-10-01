@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TafLoader.Models.Tecdoc;
 using TecDocStorageFlattener.Models.Contexts.TecdocReference22;
 
 namespace TecDocStorageFlattener.Helpers;
@@ -20,6 +21,20 @@ public static class ReferenceQueryHelpers
     public static In020? GetLanguageFromISOCode(this TecdocReference22DbContext referenceData, string ISOCode)
     {
         return referenceData.In020s.FirstOrDefault(c => c.Isocode == ISOCode);
+    }
+
+
+    public static T020? GetLanguageFromSprachNr(this TecdocDbContext referenceData, short LangNo)
+    {
+        return referenceData.T020.FirstOrDefault(c => c.LangNo == LangNo);
+    }
+    public static T020? GetLanguageFromISOCode(this TecdocDbContext referenceData, string ISOCode)
+    {
+        return referenceData.T020.FirstOrDefault(c => c.IsoCode == ISOCode);
+    }
+    public static T010? GetCountryFromISOCode(this TecdocDbContext referenceData, string ISOCode)
+    {
+        return referenceData.T010.FirstOrDefault(c => c.IsoCode2 == ISOCode);
     }
 
 }

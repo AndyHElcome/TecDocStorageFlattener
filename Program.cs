@@ -24,7 +24,7 @@ var task = new DeserializeArticles()
     {
         Logger = Log,
         ConnectionString = "Server=dev-sql;Database=idp_6402;Integrated Security=False;User Id=sa;Password=elcome_b055;TrustServerCertificate=True",
-        ReferenceDataConnectionString = "Server=dev-sql;Database=TecdocReferenceData;Integrated Security=False;User Id=sa;Password=elcome_b055;TrustServerCertificate=True"
+        ReferenceDataConnectionString = "Server=dev-sql;Database=TafLoader_20250811_1025;Integrated Security=False;User Id=sa;Password=elcome_b055;TrustServerCertificate=True"
     }
 };
 

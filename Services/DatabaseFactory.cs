@@ -51,9 +51,7 @@ public class DatabaseFactory<T> : IDisposable
     /// </summary>
     public T ConnectToDataContext()
     {
-        T db = context;
-
-        return db;
+        return context;
     }
 
 
@@ -74,13 +72,19 @@ public class DatabaseFactory<T> : IDisposable
     /// </summary>
     public T CreateDataContext()
     {
-        T db = context;
-
         // create database if it does not exists
-        databaseMigrationServiceDataContext.MigrateDatabase(db);
+        databaseMigrationServiceDataContext.MigrateDatabase(context);
 
-        return db;
+        return context;
     }
 
-    
+    /// <summary>
+    /// Create a new DbContext, which the caller must manually dispose.
+    /// </summary>
+    public void DropDB()
+    {
+        databaseMigrationServiceDataContext.DropDatabase(context);
+    }
+
+
 }

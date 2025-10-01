@@ -16,6 +16,7 @@ public class DeserializeArticles : DeserializeTasks
     public override async Task Execute()
     {
         using var exporter = Exporter;
+        await exporter.Execute();
 
         Stream? stream;
 

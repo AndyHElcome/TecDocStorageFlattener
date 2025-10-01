@@ -11,6 +11,7 @@ using TecDocStorageFlattener.Helpers;
 using TecDocStorageFlattener.Models.Contexts.Supplier;
 using Xc4.DataTransferObjects.TecDoc.API.Storage.Staging;
 using Xc4.DataTransferObjects.TecDoc.Models.IDP.Requests.Article;
+using TafLoader.Models.Tecdoc;
 
 
 
@@ -21,13 +22,15 @@ public abstract class ExporterTasks : ITasks, IDisposable
     public PutArticlesItem[]? Articles { get; set; }
     public PutLinkagesItem[]? Linkages { get; set; }
 
-    public async Task Execute()
+    public virtual async Task Execute()
     {
         if (Articles != null)
             await Export(Articles);
         if (Linkages != null)
             await Export(Linkages);
     }
+
+
 
     public abstract Task Export(PutArticlesItem[] articles);
     public abstract Task Export(PutLinkagesItem[] articles);
@@ -42,9 +45,11 @@ public class ExportSQL() : ExporterTasks
     public  string ConnectionString { get; init; }
     public  string ReferenceDataConnectionString { get; init; }
 
+    // private SupplierDataContext? supplierDataContext;
+    //private TecdocReference22DbContext? referenceDataContext;
 
-    private SupplierDataContext? supplierDataContext;
-    private TecdocReference22DbContext? referenceDataContext;
+    private TecdocDbContext? supplierDataContext;
+    private TecdocDbContext? referenceDataContext;
 
     private SupplierDBConfiguration SupplierDBConfig => new()
     {
@@ -55,19 +60,32 @@ public class ExportSQL() : ExporterTasks
         ConnectionString = this.ReferenceDataConnectionString
     };
 
+    private TAFSupplierDBConfiguration SupplierDBConfig2 => new()
+    {
+        ConnectionString = this.ConnectionString
+    };
+    private TAFReferenceDBConfiguration ReferenceDBConfig2 => new()
+    {
+        ConnectionString = this.ReferenceDataConnectionString
+    };
+
     private void StoreDataContext(string database)
     {
-        supplierDataContext ??= SupplierDBConfig.CreateDBFactory(Logger).GetDataContext(database);
-        referenceDataContext ??= ReferenceDBConfig.CreateDBFactory(Logger).GetDataContext("ref");
+        supplierDataContext ??= SupplierDBConfig2.CreateDBFactory(Logger).GetDataContext(database);
+        referenceDataContext ??= ReferenceDBConfig2.CreateDBFactory(Logger).GetDataContext("ref");
     }
 
-
+    public override async Task Execute()
+    {
+        SupplierDBConfig2.CreateDBFactory(Logger).DropDB();
+    }
 
     public override async Task Export(PutArticlesItem[] articles)
     {
-        string BrandNo = articles.First().Article?.BrandNo.ToString() ?? throw new InvalidOperationException("No BrandNo found");
+        short BrandNo = Convert.ToInt16(articles.First().Article?.BrandNo ?? throw new InvalidOperationException("No BrandNo found"));
+        short sort = 0;
 
-        StoreDataContext(BrandNo);
+        StoreDataContext(BrandNo.ToString());
 
 
 
@@ -82,9 +100,9 @@ public class ExportSQL() : ExporterTasks
         //                                               v => (v.DataSupplierTranslations, new HashSet<DataSupplierTranslation>(v.DataSupplierTranslations)));
 
         // No join but uses the helper need to test speed
-        Dictionary<string, (List<DataSupplierTranslation> DataSupplierTranslations, HashSet<DataSupplierTranslation> HashSet)>? AddArtNameCache
-            = supplierDataContext!.Dat030.GroupBy(g => g.TermNo!)
-                                         .Select(s => new { TermNo = s.Key, DataSupplierTranslations = s.Select(c => new DataSupplierTranslation { Term = c.Term, Language = c.LangNo == "255" ? null : referenceDataContext.GetLanguageFromSprachNr(c.LangNo).Isocode }).ToList() })
+        Dictionary<int, (List<DataSupplierTranslation> DataSupplierTranslations, HashSet<DataSupplierTranslation> HashSet)>? AddArtNameCache
+            = supplierDataContext!.T030.GroupBy(g => g.TermNo!)
+                                         .Select(s => new { TermNo = s.Key, DataSupplierTranslations = s.Select(c => new DataSupplierTranslation { Term = c.Term, Language = c.LangNo == 255 ? null : referenceDataContext!.GetLanguageFromSprachNr(c.LangNo).IsoCode }).ToList() })
                                          .ToDictionary(k => k.TermNo,
                                                        v => (v.DataSupplierTranslations, new HashSet<DataSupplierTranslation>(v.DataSupplierTranslations)));
 
@@ -96,10 +114,10 @@ public class ExportSQL() : ExporterTasks
         {
             if (article.Article == null)
                 continue;
-            if (article.Article.BrandNo.ToString() != BrandNo)
+            if (article.Article.BrandNo != BrandNo)
                 throw new Exception("BrandNo has changed?");
 
-            string? addArtNameReference = null;
+            int addArtNameReference = 1;
 
             // Load 030
             if ( !article.Article.AddArtName.IsNullOrEmpty())
@@ -109,26 +127,24 @@ public class ExportSQL() : ExporterTasks
                 var matchingEntry = AddArtNameCache
                     .FirstOrDefault(kvp => EqualityHelpers.AreHashSetEqual(kvp.Value.HashSet, addArtNameHashSet)).Key;
 
-                if (matchingEntry is not null)
+                if (matchingEntry != 0)
                 {
                     addArtNameReference = matchingEntry;
                 }
                 else
                 { 
-                    addArtNameReference = (supplierDataContext.Dat030.Max(m => Convert.ToInt32(m.TermNo)) + 1).ToString(); //TODO still need to create a proper beznr
+                    addArtNameReference = supplierDataContext.T030.Max(m => m.TermNo) + 1; //TODO still need to create a proper beznr
 
-                    AddArtNameCache.Add(addArtNameReference.ToString(), (article.Article.AddArtName!.ToList(), addArtNameHashSet));
+                    AddArtNameCache.Add(addArtNameReference, (article.Article.AddArtName!.ToList(), addArtNameHashSet));
 
                     foreach (var term in article.Article.AddArtName!)
                     {
-                        await supplierDataContext.Dat030.AddAsync(new Dat030()
+                        await supplierDataContext.T030.AddAsync(new ()
                         {
-                            BrandNo = article.Article.BrandNo.ToString(),
-                            TableNo = "030",
-                            TermNo = addArtNameReference.ToString(),
-                            LangNo = term.Language.IsNullOrEmpty() ? "255" : referenceDataContext.GetLanguageFromISOCode(term.Language).SprachNr.ToString(),
-                            Term = term.Term,
-                            DeleteFlag = "0"
+                            BrandNo = (short)article.Article.BrandNo,
+                            TermNo = addArtNameReference ,
+                            LangNo = term.Language.IsNullOrEmpty() ? (short)255 : referenceDataContext.GetLanguageFromISOCode(term.Language).LangNo,
+                            Term = term.Term!
                         });
                     }
                 }
@@ -136,20 +152,169 @@ public class ExportSQL() : ExporterTasks
 
 
             // Load 200
-            await supplierDataContext.Dat200.AddAsync(new Dat200()
+            await supplierDataContext.T200.AddAsync(new ()
             {
-                ArtNo = article.Article.ArtNo,
-                BrandNo = article.Article.BrandNo.ToString(),
-                TableNo = "200",
-                TermNo = addArtNameReference,
-                Selferv = article.Article.SelfService ?? false ? "1" : "0",
-                MatCert = article.Article.MatCert ?? false ? "1" : "0",
-                Remanufact = article.Article.SelfService ?? false ? "1" : "0",
-                Accesory = article.Article.IsAccessory ?? false ? "1" : "0",
-                BatchSize1 = article.Article.BatchSize1?.ToString(),
-                BatchSize2 = article.Article.BatchSize2?.ToString(),
-                DeleteFlag = "0"
+                PartNo = article.Article.ArtNo!,
+                BrandNo = (short)article.Article.BrandNo,
+                DescriptionTermNo = addArtNameReference,
+                SelfServicePacking = article.Article.SelfService,
+                MandatoryMaterialCertification = article.Article.MatCert,
+                RemanufacturedPart = article.Article.Remanufactured,
+                Accessory = article.Article.IsAccessory,
+                BatchSize1 = article.Article.BatchSize1,
+                BatchSize2 = article.Article.BatchSize2,
             });
+
+            //TODO load 201
+
+            //TODO load 202
+
+            // Load 203
+            sort = 0;
+            foreach (var crossreference in article.Article.ReferenceNumbers)
+            {
+
+                // TODO Add for countries
+                await supplierDataContext.T203.AddAsync(new ()
+                {
+                    PartNo = article.Article.ArtNo!,
+                    BrandNo = (short)article.Article.BrandNo,
+                    ManufacturerNo = (int)crossreference.ManufacturerNumber,
+                    CountryCode = string.Empty,
+                    ReferencePartNo = crossreference.ReferenceNumber!,
+                    SortNo = (++sort),
+                    //Exclude = null,
+                    ReferenceTypeKey = crossreference.ReferenceInfo
+                });
+            }
+
+            // Load 204
+            sort = 0;
+            foreach (var supercession in article.Article.SupersededArticles)
+            {
+
+                // TODO Add for countries
+                await supplierDataContext.T204.AddAsync(new ()
+                {
+                    PartNo = article.Article.ArtNo!,
+                    BrandNo = (short)article.Article.BrandNo,
+                    CountryCode = string.Empty,
+                    SupersededPartNo = supercession.SupersNo!,
+                    //Exclude = null,
+                    SortNo = (++sort),
+                });
+            }
+
+            //TODO Load 205
+
+            //TODO Load 206
+
+            // Load 207
+            sort = 0;
+            foreach (var tradeNumber in article.Article.TradeNumbers)
+            {
+
+                // TODO Add for countries
+                await supplierDataContext.T207.AddAsync(new()
+                {
+                    PartNo = article.Article.ArtNo!,
+                    BrandNo = (short)article.Article.BrandNo,
+                    CountryCode = string.Empty,
+                    TradeNumber = tradeNumber.TradeNo,
+                    FirstPage = tradeNumber.ShowImmediate,
+                    //Exclude = null,
+                    SortNo = (++sort),
+                });
+            }
+
+            //TODO Load 208
+
+            // Load 209
+            if (!article.Article.Gtins.IsNullOrEmpty())
+            {
+                foreach (var gtin in article.Article.Gtins)
+                {
+
+                    // TODO Add for countries
+                    await supplierDataContext.T209.AddAsync(new()
+                    {
+                        PartNo = article.Article.ArtNo!,
+                        BrandNo = (short)article.Article.BrandNo,
+                        CountryCode = string.Empty,
+                        GTIN = Convert.ToInt64(gtin.Num),
+                        //Exclude = null,
+                    });
+                }
+            }
+
+            //TODO Load 210
+            sort = 0;
+            foreach (var criteria in article.Article.Criteria)
+            {
+
+                // TODO Add for countries
+                await supplierDataContext.T210.AddAsync(new()
+                {
+                    PartNo = article.Article.ArtNo!,
+                    BrandNo = (short)article.Article.BrandNo,
+                    CountryCode = string.Empty,
+                    SortNo = (++sort),
+                    CritNo = (short)criteria.CritNo,
+                    CritVal = criteria.CritVal!,
+                    FirstPage = criteria.ShowImmediate ?? false,
+                    //Exclude = null,
+                });
+            }
+
+
+            // Load 211
+            foreach (var genart in article.Article.GenArtNos)
+            {
+                await supplierDataContext.T211.AddAsync(new()
+                {
+                    PartNo = article.Article.ArtNo!,
+                    BrandNo = (short)article.Article.BrandNo,
+                    GenArtNo = genart
+                });
+            }
+
+            // Load 212
+            foreach (var status in article.Article.Statuses)
+            {
+                if (status.Countries.IsNullOrEmpty())
+                {
+                    await supplierDataContext.T212.AddAsync(new ()
+                    {
+                        PartNo = article.Article.ArtNo!,
+                        BrandNo = (short)article.Article.BrandNo,
+                        CountryCode = null,
+                        QuantityPerPackage = status.QuantityUnit,
+                        QuantityPartPerUnit = status.QuantityPerUnit,
+                        ArticleStatusKey = (short)status.Status!,
+                        ArticleStatusFromDateYYYYMMDD = status.StatusDate,
+
+                    });
+                }
+                else
+                {
+                    foreach (var country in status.Countries!)
+                    {
+                        await supplierDataContext.T212.AddAsync(new ()
+                        {
+                            PartNo = article.Article.ArtNo!,
+                            BrandNo = (short)article.Article.BrandNo,
+                            CountryCode = referenceDataContext.GetCountryFromISOCode(country)!.CountryCode,
+                            QuantityPerPackage = status.QuantityUnit,
+                            QuantityPartPerUnit = status.QuantityPerUnit,
+                            ArticleStatusKey = (short)status.Status!,
+                            ArticleStatusFromDateYYYYMMDD = status.StatusDate,
+                        });
+                    }
+                }
+
+
+            }
+
             //await supplierDataContext.SaveChangesAsync();
         }
         await supplierDataContext.SaveChangesAsync();
@@ -176,20 +341,3 @@ public class ExportSQL() : ExporterTasks
     }
 }
 
-
-public class MyObjectComparer : IEqualityComparer<DataSupplierTranslation>
-{
-    public bool Equals(DataSupplierTranslation x, DataSupplierTranslation y)
-    {
-        if (x == null || y == null)
-            return false;
-        return x.Term == y.Term && x.Language == y.Language;
-    }
-
-    public int GetHashCode(DataSupplierTranslation obj)
-    {
-        if (obj == null)
-            return 0;
-        return HashCode.Combine(obj.Term, obj.Language);
-    }
-}
