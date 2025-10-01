@@ -247,7 +247,7 @@ public class ExportSQL() : ExporterTasks
                 }
             }
 
-            //TODO Load 210
+            // Load 210
             sort = 0;
             foreach (var criteria in article.Article.Criteria)
             {
@@ -265,7 +265,6 @@ public class ExportSQL() : ExporterTasks
                     //Exclude = null,
                 });
             }
-
 
             // Load 211
             foreach (var genart in article.Article.GenArtNos)
@@ -311,11 +310,24 @@ public class ExportSQL() : ExporterTasks
                         });
                     }
                 }
-
-
             }
 
-            //await supplierDataContext.SaveChangesAsync();
+            //TODO Load 213 MAYBE
+
+            //TODO Load 215
+
+            //TODO Load 217
+
+            //TODO Load 222
+
+            //TODO Load 228
+
+            //TODO Load 231
+
+            //TODO Load 232
+
+            //TODO Load 233
+
         }
         await supplierDataContext.SaveChangesAsync();
     }
