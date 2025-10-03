@@ -14,11 +14,16 @@
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="System.Linq" Version="4.3.0" />
     <PackageReference Include="System.Linq.Async" Version="6.0.3" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Util\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Models\Tecdoc\TecdocClasses.cs" />
   </ItemGroup>
 
 </Project>

@@ -5,6 +5,9 @@ using System.IO.Compression;
 using System.Text.Json;
 using System.Threading.Tasks;
 using TecDocStorageFlattener.Configuration;
+using TecDocStorageFlattener.Helpers;
+using TecDocStorageFlattener.Models;
+using TecDocStorageFlattener.Tasks;
 using TecDocStorageFlattener.Tasks.Deserialize;
 using TecDocStorageFlattener.Tasks.Exporters;
 
@@ -15,22 +18,75 @@ int clientReference = 23;
 
 
 
-var task = new DeserializeArticles()
-{
-    Filepath = @"C:\Users\andy.hargreaves\OneDrive - KerridgeCS\Desktop\Xc4TecDocTesting\ver3.1. 20250925",
-    FileNamePattern = $"Client23.*.zip",
-    FileName = $"Articles.json",
-    Exporter = new ExportSQL()
-    {
-        Logger = Log,
-        ConnectionString = "Server=dev-sql;Database=idp_6402;Integrated Security=False;User Id=sa;Password=elcome_b055;TrustServerCertificate=True",
-        ReferenceDataConnectionString = "Server=dev-sql;Database=TafLoader_20250811_1025;Integrated Security=False;User Id=sa;Password=elcome_b055;TrustServerCertificate=True"
-    }
-};
+//var task = new DeserializeArticles()
+//{
+//    Filepath = @"C:\Users\andy.hargreaves\OneDrive - KerridgeCS\Desktop\Xc4TecDocTesting\ver3.1. 20250925",
+//    FileNamePattern = $"Client23.*.zip",
+//    FileName = $"Articles.json",
+//    Exporter = new ExportSQL()
+//    {
+//        Logger = Log,
+//        ConnectionString = "Server=dev-sql;Database=idp_6402;Integrated Security=False;User Id=sa;Password=elcome_b055;TrustServerCertificate=True",
+//        ReferenceDataConnectionString = "Server=dev-sql;Database=TafLoader_20250811_1025;Integrated Security=False;User Id=sa;Password=elcome_b055;TrustServerCertificate=True"
+//    }
+//};
 
 try
 {
-   await task.Execute();
+
+    var gather = new GatherSuppliersJson()
+    {
+        Filepath = @"C:\Users\andy.hargreaves\OneDrive - KerridgeCS\Desktop\Xc4TecDocTesting\ver3.1. 20250925",
+        FileNamePattern = $"Client{clientReference}.*.zip",
+        DataLoadTasks = new List<IDataLoadTasks>
+        {
+          new LoadFromJson()
+          {
+              DataImportTasks = new List<IDataImportTasks>
+              {
+                  new SQLLoadTasks()
+                  { 
+                    SupplierDBConfig = new SupplierDBConfig()
+                    {
+                        ConnectionStringConfig = new ConnectionStringConfig()
+                        {
+                            User = "sa",
+                            Password = "elcome_b055",
+                        }
+
+                    },
+                    ReferenceDBConfig = new ReferenceDBConfig()
+                    {
+                        ConnectionStringConfig = new()
+                        { 
+                            //"Server=dev-sql;Database=TafLoader_20250811_1025;Integrated Security=False;User Id=sa;Password=elcome_b055;TrustServerCertificate=True" 
+                            Server = "dev-sql",
+                            Database = "TafLoader_20250811_1025",
+                            User = "sa",
+                            Password = "elcome_b055"
+
+                        }
+                    }
+                  }
+              }
+          }
+        }
+    }.Execute();
+
+
+
+    //await task.Execute();
+    
+    //var stream = File.OpenRead("C:\\Users\\andy.hargreaves\\OneDrive - KerridgeCS\\Desktop\\Xc4TecDocTesting\\Tool\\TecdocTableDefinition.json");
+
+    //var export = new ExportTAFTables()
+    //{
+    //    ConnectionString = "Server=dev-sql;Database=idp_6402;Integrated Security=False;User Id=sa;Password=elcome_b055;TrustServerCertificate=True",
+    //    tdTables = JsonSerializer.Deserialize<DefinitionTableJson>(stream, JsonSerializerHelpers.JsonSerializerOptions).DefinitionTable,
+    //    ExportPath = "C:\\Users\\andy.hargreaves\\OneDrive - KerridgeCS\\Desktop\\Xc4TecDocTesting\\Tool\\"
+    //};
+
+    //await export.ExportDatFiles("eurcams", "6402", "eurcams");
 
 }
 catch (Exception ex)

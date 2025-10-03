@@ -6,7 +6,7 @@ using TecDocStorageFlattener.Helpers;
 using TecDocStorageFlattener.Tasks.Exporters;
 
 namespace TecDocStorageFlattener.Tasks.Deserialize;
-public abstract class DeserializeTasks : ITasks
+public abstract class DeserializeTasks 
 {
     public abstract Task Execute();
 }
@@ -18,15 +18,15 @@ public class Deserialize : DeserializeTasks
 
     public override async Task Execute()
     {
-        var articlesTask = new DeserializeArticles()
-        {
-            Filepath = this.Filepath,
-            FileNamePattern = this.FileNamePattern,
-            FileName = $"Articles.json",
-            Exporter = new ExportSQL()
-        };
+        //var articlesTask = new DeserializeArticles()
+        //{
+        //    Filepath = this.Filepath,
+        //    FileNamePattern = this.FileNamePattern,
+        //    FileName = $"Articles.json",
+        //    Exporter = new ExportSQL()
+        //};
 
-        await articlesTask.Execute();
+       // await articlesTask.Execute();
 
         var linkagesTask = new DeserializeLinkages()
         {

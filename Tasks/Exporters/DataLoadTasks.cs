@@ -3,7 +3,6 @@ using Microsoft.Identity.Client;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Data.Common;
-using System.Diagnostics;
 using System.Reflection.Metadata.Ecma335;
 using TecDocStorageFlattener.Models.Contexts.TecdocReference22;
 using TecDocStorageFlattener.Configuration;
@@ -12,12 +11,14 @@ using TecDocStorageFlattener.Models.Contexts.Supplier;
 using Xc4.DataTransferObjects.TecDoc.API.Storage.Staging;
 using Xc4.DataTransferObjects.TecDoc.Models.IDP.Requests.Article;
 using TafLoader.Models.Tecdoc;
+using System.Data;
+using Microsoft.Extensions.DependencyInjection;
 
 
 
 namespace TecDocStorageFlattener.Tasks.Exporters;
 
-public abstract class ExporterTasks : ITasks, IDisposable
+public abstract class DataLoadTasks1 :  IDisposable
 {
     public PutArticlesItem[]? Articles { get; set; }
     public PutLinkagesItem[]? Linkages { get; set; }
@@ -31,6 +32,7 @@ public abstract class ExporterTasks : ITasks, IDisposable
     }
 
 
+    public TecdocDbContext? supplierDataContext;
 
     public abstract Task Export(PutArticlesItem[] articles);
     public abstract Task Export(PutLinkagesItem[] articles);
@@ -38,35 +40,35 @@ public abstract class ExporterTasks : ITasks, IDisposable
     public abstract void Dispose();
 }
 
-public class ExportSQL() : ExporterTasks
+public class ExportSQL() : DataLoadTasks1
 {
     public  ILogger Logger { get; init; }
 
-    public  string ConnectionString { get; init; }
-    public  string ReferenceDataConnectionString { get; init; }
+    public string ConnectionString { get; init; }
+    public string ReferenceDataConnectionString { get; init; }
 
     // private SupplierDataContext? supplierDataContext;
     //private TecdocReference22DbContext? referenceDataContext;
 
-    private TecdocDbContext? supplierDataContext;
+    public TecdocDbContext? supplierDataContext;
     private TecdocDbContext? referenceDataContext;
 
-    private SupplierDBConfiguration SupplierDBConfig => new()
-    {
-        ConnectionString = this.ConnectionString
-    };
-    private ReferenceDBConfiguration ReferenceDBConfig => new()
-    {
-        ConnectionString = this.ReferenceDataConnectionString
-    };
+    //private SupplierDBConfiguration SupplierDBConfig => new()
+    //{
+    //    ConnectionString = this.ConnectionString
+    //};
+    //private ReferenceDBConfiguration ReferenceDBConfig => new()
+    //{
+    //    ConnectionString = this.ReferenceDataConnectionString
+    //};
 
-    private TAFSupplierDBConfiguration SupplierDBConfig2 => new()
+    private SupplierDBConfig SupplierDBConfig2 => new()
     {
-        ConnectionString = this.ConnectionString
+        //ConnectionString = this.ConnectionString
     };
-    private TAFReferenceDBConfiguration ReferenceDBConfig2 => new()
+    private ReferenceDBConfig ReferenceDBConfig2 => new()
     {
-        ConnectionString = this.ReferenceDataConnectionString
+        //ConnectionString = this.ReferenceDataConnectionString
     };
 
     private void StoreDataContext(string database)

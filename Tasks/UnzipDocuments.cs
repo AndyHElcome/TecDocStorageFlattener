@@ -8,7 +8,7 @@ using TecDocStorageFlattener.Tasks.Exporters;
 
 
 namespace TecDocStorageFlattener.Tasks;
-public class UnzipDocuments : ITasks
+public class UnzipDocuments
 {
     public required string SourceFileName { get; init; }
     public string? DestinationFileName { get; set; }
@@ -35,12 +35,12 @@ public class UnzipDocuments : ITasks
     }
 }
 
-public class DropDatabase() : ITasks
-{
-    public string ConnectionString { get; init; }
+//public class DropDatabase() : ITasks
+//{
+//    public string ConnectionString { get; init; }
 
-    public async Task Execute()
-    {
+//    public async Task Execute()
+//    {
         
-    }
-}
+//    }
+//}
