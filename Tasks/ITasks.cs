@@ -42,7 +42,14 @@ public abstract class DataGatherTasks : IDataGatherTasks
     public abstract Task<IEnumerable<Supplier>> Gather();
 }
 
-public class ReadJson : JsonConfig
+public interface IReadJson
+{
+    Stream? Read(string filePath, string fileName);
+    Stream ReadArticles();
+    Stream ReadLinkages();
+}
+
+public class ReadJson : JsonConfig, IReadJson
 {
     public Stream? Read(string filePath, string fileName)
     {
@@ -54,7 +61,7 @@ public class ReadJson : JsonConfig
         if (ArticlesFilePath is null)
             throw new InvalidOperationException("ArticlesFilePath is not set");
 
-        return Read(ArticlesFilePath, ArticlesFileName) ?? throw new InvalidOperationException("Could not open stream from source file");
+        return this.Read(ArticlesFilePath, ArticlesFileName) ?? throw new InvalidOperationException("Could not open stream from source file");
     }
 
     public Stream ReadLinkages()
@@ -62,15 +69,31 @@ public class ReadJson : JsonConfig
         if (LinkagesFilePath is null)
             throw new InvalidOperationException("LinkagesFilePath is not set");
 
-        return Read(LinkagesFilePath, LinkagesFileName) ?? throw new InvalidOperationException("Could not open stream from source file");
+        return this.Read(LinkagesFilePath, LinkagesFileName) ?? throw new InvalidOperationException("Could not open stream from source file");
     }
 }
 
-public class ReadJsonZip : ReadJson
+public class ReadJsonZip : JsonConfig, IReadJson
 {
-    public new Stream? Read(string filePath, string fileName)
+    public Stream? Read(string filePath, string fileName)
     { 
         return new UnzipDocuments { SourceFileName = filePath }.GetZipArchiveStream(fileName)?.Open();
+    }
+
+    public Stream ReadArticles()
+    {
+        if (ArticlesFilePath is null)
+            throw new InvalidOperationException("ArticlesFilePath is not set");
+
+        return this.Read(ArticlesFilePath, ArticlesFileName) ?? throw new InvalidOperationException("Could not open stream from source file");
+    }
+
+    public Stream ReadLinkages()
+    {
+        if (LinkagesFilePath is null)
+            throw new InvalidOperationException("LinkagesFilePath is not set");
+
+        return this.Read(LinkagesFilePath, LinkagesFileName) ?? throw new InvalidOperationException("Could not open stream from source file");
     }
 }
 
@@ -163,20 +186,40 @@ public class LoadFromJson : DataLoadTasks
         {
             var newSupplier = supplier; //Avoid modified closure
 
-            ReadJson readJson = supplier.SupplierConfigs?.OfType<ReadJson>().FirstOrDefault() ?? throw new InvalidOperationException("No ReadJson config found");
+            IReadJson readJson = supplier.SupplierConfigs?.OfType<IReadJson>().FirstOrDefault() ?? throw new InvalidOperationException("No ReadJson config found");
 
             using (Stream? stream = readJson.ReadArticles())
             {
+                if (stream == null)
+                    throw new InvalidOperationException("Could not open stream from source file");
 
-                //TODO ERROR HERE
-                var sourceDocuments = JsonSerializer.DeserializeAsyncEnumerable<Xc4.DataTransferObjects.TecDoc.API.Storage.Staging.PutArticlesItem>(stream, JsonSerializerHelpers.JsonSerializerOptions)
+                try
+                {
+                    //var test = JsonSerializer.Deserialize<List<Xc4.DataTransferObjects.TecDoc.API.Storage.Staging.PutArticlesItem>>(stream, JsonSerializerHelpers.JsonSerializerOptions);
+
+                    //TODO ERROR HERE -- DID WORK ONCE
+                    var sourceDocuments = JsonSerializer.DeserializeAsyncEnumerable<Xc4.DataTransferObjects.TecDoc.API.Storage.Staging.PutArticlesItem>(stream, JsonSerializerHelpers.JsonSerializerOptions);
                     //.Where(c => !string.IsNullOrEmpty(c?.Article?.ArtNo))
-                    .Chunk(50);
-                await foreach (var chunk in sourceDocuments)
-                    foreach (var DataImportTask in DataImportTasks)
-                        newSupplier = await DataImportTask.ImportArticles(chunk!, newSupplier);
-            }
+                    //.Chunk(50);
+                    await foreach (var chunk in sourceDocuments)
+                    {
+                        foreach (var DataImportTask in DataImportTasks)
+                        {
+                            newSupplier = await DataImportTask.ImportArticles([ chunk! ], newSupplier);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                    throw;
+                }
+                finally
+                {
+                    stream.Dispose();
+                }
 
+            }
             using (Stream? stream = readJson.ReadLinkages())
             {
                 var sourceDocuments = JsonSerializer.DeserializeAsyncEnumerable<Xc4.DataTransferObjects.TecDoc.API.Storage.Staging.PutLinkagesItem>(stream, JsonSerializerHelpers.JsonSerializerOptions)

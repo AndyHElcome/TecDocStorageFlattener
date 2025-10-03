@@ -50,6 +50,7 @@ try
                     {
                         ConnectionStringConfig = new ConnectionStringConfig()
                         {
+                            ConnectionStringTemplate = "Server=dev-sql;Database=idp_{brandno};Integrated Security=False;User Id=sa;Password=elcome_b055;TrustServerCertificate=True",
                             User = "sa",
                             Password = "elcome_b055",
                         }

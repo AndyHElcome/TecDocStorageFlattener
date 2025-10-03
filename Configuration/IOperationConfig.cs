@@ -20,9 +20,9 @@ public class Supplier
 
 public class JsonConfig : ISupplierConfig
 {
-    public string ArticlesFilePath { get; set; } = "*";
+    public string ArticlesFilePath { get; set; }
     public string ArticlesFileName { get; set; } = "Articles.json";
-    public string LinkagesFilePath { get; set; } = "*";
+    public string LinkagesFilePath { get; set; }
     public string LinkagesFileName { get; set; } = "Linkages.json";
 }
 
